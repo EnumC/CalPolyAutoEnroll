@@ -1,10 +1,12 @@
 # Copyright 2020 Eric Qian.
-# All rights reserved.
+# GNU GPLv3 License. See LICENSE
+
 import time
 import datetime
 import pause
 import signal
 import sys
+import pprint
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
@@ -14,6 +16,28 @@ print("CalPoly Username: ")
 username = str(input())
 print("CalPoly Password: ")
 password = str(input())
+
+classList = []
+classNum = 0
+labNum = 0
+print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+while classNum != "-1":
+    print("Please enter class nbr (4 digits). If done, enter -1: ")
+    classNum = str(input())
+    if classNum != "-1":
+        print("Enter laboratory class nbr. If not applicable, enter -1: ")
+        labNum = str(input())
+        if len(classNum) > 4 or len(labNum) > 4:
+            print("\n\n\n\nERROR: Input greater than 4 digits. Please try entering class and lab numbers again.\n\n\n\n")
+        elif len(classNum) < 4 or (len(labNum) < 4 and labNum != "-1"):
+            print(
+                "\n\n\n\nERROR: Input less than 4 digits. Please prepend with '0'\n\n\n\n")
+        else:
+            classList.append([classNum, labNum])
+            print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+print("Added classes: ")
+pprint.PrettyPrinter(indent=4).pprint(classList)
 
 print("Schedule to run at a later time? (y/n)")
 targetSchedule = str(input())
@@ -29,8 +53,9 @@ if targetSchedule == "y" or targetSchedule == "Y":
     print("Enter minute:")
     targetMinute = int(input())
 
-    targetTime = datetime.datetime(targetYear, targetMonth, targetDay, targetHour, targetMinute, 0, 0)
-    print ("time set: " + targetTime.strftime("%m/%d/%Y, %H:%M:%S"))
+    targetTime = datetime.datetime(
+        targetYear, targetMonth, targetDay, targetHour, targetMinute, 0, 0)
+    print("time set: " + targetTime.strftime("%m/%d/%Y, %H:%M:%S"))
     pause.until(targetTime)
 else:
     print("Running NOW.")
@@ -46,23 +71,30 @@ opts.add_argument("profile-directory='Profile 1'")
 # opts.binary_location = brave_path
 browser = webdriver.Chrome(executable_path=driver_path, options=opts)
 
+
 def signal_handler(sig, frame):
     print('Exiting...')
     browser.quit()
     sys.exit(0)
 
+
 signal.signal(signal.SIGINT, signal_handler)
 print('Press Ctrl+C to stop')
 
+
 def press_next_btn():
-    browser.find_element_by_css_selector('[id^=DERIVED_CLS_DTL_NEXT_PB]').click()
-    print ("next button pressed.")
+    browser.find_element_by_css_selector(
+        '[id^=DERIVED_CLS_DTL_NEXT_PB]').click()
+    print("next button pressed.")
+
 
 def confirm_class_add():
     while len(browser.find_elements_by_css_selector("[value='Proceed to Step 2 of 3']")) == 0:
         time.sleep(1)
-    browser.find_element_by_css_selector("[value='Proceed to Step 2 of 3']").click()
-    print ("commited all classes.")
+    browser.find_element_by_css_selector(
+        "[value='Proceed to Step 2 of 3']").click()
+    print("commited all classes.")
+
 
 def errors_exists():
     if len(browser.find_elements_by_css_selector("[id^='DERIVED_SASSMSG_ERROR_TEXT']")) > 0:
@@ -70,20 +102,25 @@ def errors_exists():
         errMsg = ""
         for err in browser.find_elements_by_css_selector("[id^='DERIVED_SASSMSG_ERROR_TEXT']"):
             errMsg += err.text
-        browser.execute_script("document.querySelectorAll('[id^=DERIVED_SASSMSG_ERROR_TEXT]').forEach(elem => elem.remove())")
+        browser.execute_script(
+            "document.querySelectorAll('[id^=DERIVED_SASSMSG_ERROR_TEXT]').forEach(elem => elem.remove())")
         return [True, errMsg]
     else:
         return [False, ""]
-def add_class(sectionNum, laboratoryNum=-1):
+
+
+def add_class(sectionNum, laboratoryNum="-1"):
     while len(browser.find_elements_by_id('DERIVED_REGFRM1_CLASS_NBR')) == 0:
         time.sleep(1)
 
     browser.find_element_by_id('DERIVED_REGFRM1_CLASS_NBR').clear()
-    browser.find_element_by_id('DERIVED_REGFRM1_CLASS_NBR').send_keys(sectionNum)
-    
-    browser.find_element_by_css_selector("[title='Add a class using class number']").click()
+    browser.find_element_by_id(
+        'DERIVED_REGFRM1_CLASS_NBR').send_keys(sectionNum)
 
-    if laboratoryNum != -1:
+    browser.find_element_by_css_selector(
+        "[title='Add a class using class number']").click()
+
+    if laboratoryNum != "-1":
         # if lab section is required/passed in.
 
         while len(browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')) == 0:
@@ -91,9 +128,10 @@ def add_class(sectionNum, laboratoryNum=-1):
             errStatus, errMsg = errors_exists()
             if errStatus is True:
                 # ERR: class already in cart
-                print ("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
+                print("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
                 return
-        labsections = browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')
+        labsections = browser.find_elements_by_css_selector(
+            '[id^=trSSR_CLS_TBL_R1]')
 
         for labsection in labsections:
 
@@ -101,9 +139,10 @@ def add_class(sectionNum, laboratoryNum=-1):
                 time.sleep(1)
             for section in labsection.find_elements_by_css_selector('[id^=SSR_CLS_TBL_R1_RELATE_CLASS_NBR]'):
                 if section.text == laboratoryNum:
-                    print ("found lab section!")
-                    labsection.find_element_by_css_selector('[class=PSRADIOBUTTON]').click()
-                    print ("selected lab section.")
+                    print("found lab section!")
+                    labsection.find_element_by_css_selector(
+                        '[class=PSRADIOBUTTON]').click()
+                    print("selected lab section.")
                     # time.sleep(2)
                     press_next_btn()
                     break
@@ -111,12 +150,13 @@ def add_class(sectionNum, laboratoryNum=-1):
         time.sleep(1)
         errStatus, errMsg = errors_exists()
         if errStatus is True:
-            print ("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
+            print("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
             return
-    browser.find_element_by_css_selector('[id^=DERIVED_CLS_DTL_WAIT_LIST_OKAY].PSCHECKBOX').click()
+    browser.find_element_by_css_selector(
+        '[id^=DERIVED_CLS_DTL_WAIT_LIST_OKAY].PSCHECKBOX').click()
     press_next_btn()
 
-    print ("added class.")
+    print("added class.")
 
 
 def runProg():
@@ -142,11 +182,11 @@ def runProg():
             link.click()
             break
         if link == navLinks[len(navLinks) - 1]:
-            print ("Student center not found in nav panel. Aborting.")
+            print("Student center not found in nav panel. Aborting.")
             sys.exit(1)
     browser.switch_to.window(browser.window_handles[1])
     if (browser.current_url.startswith("https://cmsweb.pscs.calpoly.edu/psp/CSLOPRD/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL")):
-        print ("now in student center.")
+        print("now in student center.")
 
     # print(browser.current_url)
     while len(browser.find_elements_by_id('ptifrmtgtframe')) == 0:
@@ -155,10 +195,12 @@ def runProg():
     enrollBtn = browser.find_element_by_css_selector("[aria-label='Enroll']")
     enrollBtn.click()
 
-    add_class('9672', '9673')
-    add_class('3971')
+    for targetClass in classList:
+        add_class(targetClass[0], targetClass[1])
+
     confirm_class_add()
 
     time.sleep(30)
+
 
 runProg()
