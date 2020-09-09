@@ -1,11 +1,39 @@
 # Copyright 2020 Eric Qian.
 # All rights reserved.
 import time
+import datetime
+import pause
 import signal
 import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
+
+print("To automate login, Cal Poly credentials are required.")
+print("CalPoly Username: ")
+username = str(input())
+print("CalPoly Password: ")
+password = str(input())
+
+print("Schedule to run at a later time? (y/n)")
+targetSchedule = str(input())
+if targetSchedule == "y" or targetSchedule == "Y":
+    print("Enter year:")
+    targetYear = int(input())
+    print("Enter month:")
+    targetMonth = int(input())
+    print("Enter day:")
+    targetDay = int(input())
+    print("Enter hour(1-24):")
+    targetHour = int(input())
+    print("Enter minute:")
+    targetMinute = int(input())
+
+    targetTime = datetime.datetime(targetYear, targetMonth, targetDay, targetHour, targetMinute, 0, 0)
+    print ("time set: " + targetTime.strftime("%m/%d/%Y, %H:%M:%S"))
+    pause.until(targetTime)
+else:
+    print("Running NOW.")
 
 opts = Options()
 # opts.add_argument("user-data-dir=")
@@ -17,7 +45,6 @@ opts.add_argument("user-data-dir=chrome-user-data")
 opts.add_argument("profile-directory='Profile 1'")
 # opts.binary_location = brave_path
 browser = webdriver.Chrome(executable_path=driver_path, options=opts)
-
 
 def signal_handler(sig, frame):
     print('Exiting...')
@@ -61,9 +88,9 @@ def add_class(sectionNum, laboratoryNum=-1):
 
         while len(browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')) == 0:
             time.sleep(1)
-            # ERR: class already in cart
             errStatus, errMsg = errors_exists()
             if errStatus is True:
+                # ERR: class already in cart
                 print ("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
                 return
         labsections = browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')
@@ -92,37 +119,46 @@ def add_class(sectionNum, laboratoryNum=-1):
     print ("added class.")
 
 
+def runProg():
+    browser.get('https://myportal.calpoly.edu')
 
-browser.get('https://myportal.calpoly.edu')
+    print(browser.current_url)
+    if browser.current_url.startswith('https://idp.calpoly.edu/idp/profile/cas/login'):
+        print("login required.")
+        while len(browser.find_elements_by_id('username')) == 0:
+            time.sleep(1)
+        browser.find_element_by_id('username').send_keys(username)
+        browser.find_element_by_id('password').send_keys(password)
+        browser.find_element_by_name('_eventId_proceed').click()
+        while browser.current_url.startswith('https://idp.calpoly.edu/idp/profile/cas/login'):
+            time.sleep(1)
+    else:
+        print("already logged in.")
 
-print(browser.current_url)
-if browser.current_url.startswith('https://idp.calpoly.edu/idp/profile/cas/login'):
-    print("login required.")
-    while browser.current_url.startswith('https://idp.calpoly.edu/idp/profile/cas/login'):
-        time.sleep(3)
-else:
-    print("already logged in.")
+    print("logged in.")
+    navLinks = browser.find_elements_by_class_name("singleclick-link")
+    for link in navLinks:
+        if link.text == "Student Center":
+            link.click()
+            break
+        if link == navLinks[len(navLinks) - 1]:
+            print ("Student center not found in nav panel. Aborting.")
+            sys.exit(1)
+    browser.switch_to.window(browser.window_handles[1])
+    if (browser.current_url.startswith("https://cmsweb.pscs.calpoly.edu/psp/CSLOPRD/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL")):
+        print ("now in student center.")
 
-print("logged in.")
-navLinks = browser.find_elements_by_class_name("singleclick-link")
-for link in navLinks:
-    if link.text == "Student Center":
-        link.click()
-        break
-    if link == navLinks[len(navLinks) - 1]:
-        print ("Student center not found in nav panel. Aborting.")
-        sys.exit(1)
-browser.switch_to.window(browser.window_handles[1])
-if (browser.current_url.startswith("https://cmsweb.pscs.calpoly.edu/psp/CSLOPRD/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL")):
-    print ("now in student center.")
+    # print(browser.current_url)
+    while len(browser.find_elements_by_id('ptifrmtgtframe')) == 0:
+        time.sleep(1)
+    browser.switch_to.frame(browser.find_element_by_id('ptifrmtgtframe'))
+    enrollBtn = browser.find_element_by_css_selector("[aria-label='Enroll']")
+    enrollBtn.click()
 
-# print(browser.current_url)
-browser.switch_to.frame(browser.find_element_by_id('ptifrmtgtframe'))
-enrollBtn = browser.find_element_by_css_selector("[aria-label='Enroll']")
-enrollBtn.click()
+    add_class('9672', '9673')
+    add_class('3971')
+    confirm_class_add()
 
-add_class('9672', '9673')
-add_class('3971')
-confirm_class_add()
+    time.sleep(30)
 
-time.sleep(30)
+runProg()
