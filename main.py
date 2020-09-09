@@ -37,19 +37,35 @@ def confirm_class_add():
     browser.find_element_by_css_selector("[value='Proceed to Step 2 of 3']").click()
     print ("commited all classes.")
 
+def errors_exists():
+    if len(browser.find_elements_by_css_selector("[id^='DERIVED_SASSMSG_ERROR_TEXT']")) > 0:
+        # there are errors!
+        errMsg = ""
+        for err in browser.find_elements_by_css_selector("[id^='DERIVED_SASSMSG_ERROR_TEXT']"):
+            errMsg += err.text
+        browser.execute_script("document.querySelectorAll('[id^=DERIVED_SASSMSG_ERROR_TEXT]').forEach(elem => elem.remove())")
+        return [True, errMsg]
+    else:
+        return [False, ""]
 def add_class(sectionNum, laboratoryNum=-1):
     while len(browser.find_elements_by_id('DERIVED_REGFRM1_CLASS_NBR')) == 0:
         time.sleep(1)
-    browser.find_element_by_id('DERIVED_REGFRM1_CLASS_NBR').send_keys(sectionNum)
-    browser.find_element_by_css_selector("[title='Add a class using class number']").click()
 
-    # TODO: class already in cart handling
+    browser.find_element_by_id('DERIVED_REGFRM1_CLASS_NBR').clear()
+    browser.find_element_by_id('DERIVED_REGFRM1_CLASS_NBR').send_keys(sectionNum)
+    
+    browser.find_element_by_css_selector("[title='Add a class using class number']").click()
 
     if laboratoryNum != -1:
         # if lab section is required/passed in.
 
         while len(browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')) == 0:
             time.sleep(1)
+            # ERR: class already in cart
+            errStatus, errMsg = errors_exists()
+            if errStatus is True:
+                print ("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
+                return
         labsections = browser.find_elements_by_css_selector('[id^=trSSR_CLS_TBL_R1]')
 
         for labsection in labsections:
@@ -64,9 +80,12 @@ def add_class(sectionNum, laboratoryNum=-1):
                     # time.sleep(2)
                     press_next_btn()
                     break
-    
     while len(browser.find_elements_by_css_selector('[id^=DERIVED_CLS_DTL_WAIT_LIST_OKAY]')) == 0:
         time.sleep(1)
+        errStatus, errMsg = errors_exists()
+        if errStatus is True:
+            print ("ERROR IN ADDING CLASS: " + sectionNum + ". " + errMsg)
+            return
     browser.find_element_by_css_selector('[id^=DERIVED_CLS_DTL_WAIT_LIST_OKAY].PSCHECKBOX').click()
     press_next_btn()
 
